@@ -11,6 +11,9 @@ app.listen(config.port, () => {
   console.log(`  URL        : http://localhost:${config.port}`);
   console.log(`  Host API   : ${config.host}`);
   console.log(`  Redirect   : ${config.redirectUrl}`);
+  console.log(
+    `  Penyimpanan: ${config.storeDriver === 'sqlite' ? 'SQLite (' + config.dbPath + ')' : 'File JSON (' + config.dataDir + '/accounts.json)'}`,
+  );
   const missing = missingCredentials();
   if (missing.length) {
     console.log('');

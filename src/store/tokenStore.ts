@@ -1,80 +1,45 @@
-import fs from 'node:fs';
-import path from 'node:path';
 import { config } from '../config';
+import { ShopAccount, StoreBackend } from './types';
+import { FileStore } from './fileStore';
+
+// Re-export the type so existing call sites keep importing it from here.
+export type { ShopAccount } from './types';
+
+let backend: StoreBackend | null = null;
 
 /**
- * One connected Shopee shop/account. Tokens are stored on disk so the
- * dashboard can manage several shops at once across restarts.
+ * Resolve (once) the configured storage backend.
+ *  - STORE_DRIVER=sqlite -> built-in node:sqlite database (Node 22.5+)
+ *  - otherwise           -> JSON file store (default, works everywhere)
  *
- * SECURITY: this file contains access & refresh tokens. The `data/` folder
- * is git-ignored. In production prefer an encrypted secret store / DB.
+ * The SQLite module is required lazily so the experimental `node:sqlite`
+ * module is only loaded when actually selected.
  */
-export interface ShopAccount {
-  shopId: number;
-  shopName?: string;
-  region?: string;
-  accessToken: string;
-  refreshToken: string;
-  /** Epoch milliseconds when the access token expires. */
-  expiresAt: number;
-  /** Epoch milliseconds when this account was first connected. */
-  connectedAt: number;
-  /** Epoch milliseconds of the last successful token refresh. */
-  lastRefreshedAt?: number;
-}
+function getBackend(): StoreBackend {
+  if (backend) return backend;
 
-interface StoreShape {
-  shops: Record<string, ShopAccount>;
-}
-
-const FILE = path.join(config.dataDir, 'accounts.json');
-
-function ensureDir(): void {
-  if (!fs.existsSync(config.dataDir)) {
-    fs.mkdirSync(config.dataDir, { recursive: true });
+  if (config.storeDriver === 'sqlite') {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { SqliteStore } = require('./sqliteStore') as typeof import('./sqliteStore');
+    backend = new SqliteStore(config.dbPath);
+  } else {
+    backend = new FileStore(config.dataDir);
   }
-}
-
-function read(): StoreShape {
-  try {
-    const raw = fs.readFileSync(FILE, 'utf8');
-    const parsed = JSON.parse(raw) as StoreShape;
-    if (!parsed.shops) return { shops: {} };
-    return parsed;
-  } catch {
-    return { shops: {} };
-  }
-}
-
-function write(data: StoreShape): void {
-  ensureDir();
-  fs.writeFileSync(FILE, JSON.stringify(data, null, 2), 'utf8');
+  return backend;
 }
 
 export function listAccounts(): ShopAccount[] {
-  return Object.values(read().shops).sort((a, b) => a.connectedAt - b.connectedAt);
+  return getBackend().list();
 }
 
 export function getAccount(shopId: number): ShopAccount | undefined {
-  return read().shops[String(shopId)];
+  return getBackend().get(shopId);
 }
 
 export function upsertAccount(account: ShopAccount): ShopAccount {
-  const data = read();
-  const existing = data.shops[String(account.shopId)];
-  data.shops[String(account.shopId)] = {
-    ...existing,
-    ...account,
-    connectedAt: existing?.connectedAt ?? account.connectedAt,
-  };
-  write(data);
-  return data.shops[String(account.shopId)];
+  return getBackend().upsert(account);
 }
 
 export function removeAccount(shopId: number): boolean {
-  const data = read();
-  if (!data.shops[String(shopId)]) return false;
-  delete data.shops[String(shopId)];
-  write(data);
-  return true;
+  return getBackend().remove(shopId);
 }

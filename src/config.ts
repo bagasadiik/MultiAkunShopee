@@ -3,6 +3,8 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+export type StoreDriver = 'file' | 'sqlite';
+
 export interface AppConfig {
   partnerId: number;
   partnerKey: string;
@@ -11,12 +13,18 @@ export interface AppConfig {
   region: string;
   port: number;
   dataDir: string;
+  storeDriver: StoreDriver;
+  dbPath: string;
 }
 
 function num(value: string | undefined, fallback: number): number {
   const n = Number(value);
   return Number.isFinite(n) && n > 0 ? n : fallback;
 }
+
+const dataDir = path.resolve(process.cwd(), process.env.DATA_DIR ?? 'data');
+const storeDriver: StoreDriver =
+  (process.env.STORE_DRIVER ?? 'file').toLowerCase() === 'sqlite' ? 'sqlite' : 'file';
 
 export const config: AppConfig = {
   partnerId: num(process.env.SHOPEE_PARTNER_ID, 0),
@@ -25,7 +33,12 @@ export const config: AppConfig = {
   redirectUrl: process.env.SHOPEE_REDIRECT_URL ?? 'http://localhost:3000/auth/callback',
   region: process.env.SHOPEE_REGION ?? 'id',
   port: num(process.env.PORT, 3000),
-  dataDir: path.resolve(process.cwd(), process.env.DATA_DIR ?? 'data'),
+  dataDir,
+  storeDriver,
+  // Absolute path to the SQLite database file (used when storeDriver=sqlite).
+  dbPath: process.env.DB_PATH
+    ? path.resolve(process.cwd(), process.env.DB_PATH)
+    : path.join(dataDir, 'accounts.db'),
 };
 
 /**

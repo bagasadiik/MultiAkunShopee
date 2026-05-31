@@ -25,6 +25,7 @@ export function createServer() {
       host: config.host,
       region: config.region,
       redirectUrl: config.redirectUrl,
+      storeDriver: config.storeDriver,
     });
   });
 

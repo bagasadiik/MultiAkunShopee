@@ -24,6 +24,8 @@ melihat pesanan dari seluruh toko dalam satu tampilan.
   (`get_tracking_number` + `get_tracking_info`).
 - 📥 **Ekspor CSV** — unduh pesanan (per toko atau semua toko) sebagai CSV.
 - 📊 **Agregasi lintas toko** — gabungkan pesanan semua toko, diurutkan terbaru.
+- 🗄️ **Penyimpanan fleksibel** — token disimpan ke file JSON (default) atau
+  database **SQLite** (`node:sqlite`), dipilih lewat satu env, tanpa dependency.
 - 🧱 **Aman by default** — token tidak pernah dikirim ke browser; folder `data/`
   di-_gitignore_.
 
@@ -43,7 +45,10 @@ src/
 │   ├── logistics.ts       # get_tracking_number + get_tracking_info (resi)
 │   └── orders.ts          # get_order_list + get_order_detail + agregasi + CSV
 ├── store/
-│   └── tokenStore.ts      # penyimpanan token multi-akun (file JSON)
+│   ├── types.ts           # tipe ShopAccount + interface StoreBackend
+│   ├── tokenStore.ts      # facade: pilih backend (file/sqlite) via env
+│   ├── fileStore.ts       # backend JSON file (default, tanpa dependency)
+│   └── sqliteStore.ts     # backend SQLite via modul bawaan node:sqlite
 ├── util/
 │   └── csv.ts             # pembuat dokumen CSV (RFC 4180 + BOM)
 └── routes/
@@ -66,7 +71,9 @@ Semua panggilan v2 memakai HMAC-SHA256 dengan `partner_key` sebagai kunci:
 
 ## Prasyarat
 
-- **Node.js 18+** (memakai `fetch` & `crypto` bawaan).
+- **Node.js 18+** (memakai `fetch` & `crypto` bawaan) untuk penyimpanan **file** (default).
+- **Node.js 22.5+** bila memakai penyimpanan **SQLite** (`STORE_DRIVER=sqlite`),
+  karena memakai modul bawaan `node:sqlite` (tanpa dependency tambahan).
 - Akun **Shopee Open Platform** dengan sebuah **App** (Partner ID & Partner Key).
 
 ---
@@ -100,7 +107,28 @@ SHOPEE_HOST=https://partner.shopeemobile.com
 SHOPEE_REDIRECT_URL=http://localhost:3000/auth/callback
 SHOPEE_REGION=id
 PORT=3000
+
+# Penyimpanan token: "file" (default) atau "sqlite" (butuh Node 22.5+)
+STORE_DRIVER=file
+# DB_PATH=data/accounts.db   # dipakai saat STORE_DRIVER=sqlite
 ```
+
+### Penyimpanan token (storage)
+
+Token tiap toko disimpan oleh sebuah *backend* yang bisa dipilih lewat
+`STORE_DRIVER`:
+
+| Driver | Lokasi default | Kebutuhan | Catatan |
+| ------ | -------------- | --------- | ------- |
+| `file` (default) | `data/accounts.json` | Node 18+ | Tanpa dependency, cocok untuk pemakaian pribadi |
+| `sqlite` | `data/accounts.db` | Node 22.5+ | Database SQLite via modul bawaan `node:sqlite` (tanpa dependency) |
+
+Ganti backend cukup dengan mengubah `STORE_DRIVER` di `.env` lalu restart server —
+tidak ada perubahan kode. Keduanya menyimpan field yang sama dan tetap
+men-_refresh_ token otomatis.
+
+> Beralih backend **tidak** memindahkan data lama secara otomatis; hubungkan
+> ulang toko (atau migrasikan datanya) setelah berganti driver.
 
 ---
 
@@ -155,9 +183,11 @@ Query untuk endpoint pesanan: `days` (≤15), `status`
 
 ## Catatan keamanan & produksi
 
-- **Jangan commit** `.env` maupun folder `data/` (sudah di-_gitignore_).
-- File `data/accounts.json` berisi access & refresh token. Untuk produksi,
-  gunakan database/secret store terenkripsi dan tambahkan autentikasi pada dashboard.
+- **Jangan commit** `.env`, folder `data/`, maupun file database (`*.db`) — semua
+  sudah di-_gitignore_.
+- File `data/accounts.json` (driver `file`) atau `data/accounts.db` (driver `sqlite`)
+  berisi access & refresh token. Untuk produksi, gunakan database/secret store
+  terenkripsi dan tambahkan autentikasi pada dashboard.
 - Access token Shopee berlaku ~4 jam; refresh token berlaku lebih lama (cek dokumentasi
   Shopee terbaru). Aplikasi me-refresh otomatis dengan margin 5 menit.
 - Patuhi **rate limit** dan **Kebijakan** Shopee Open Platform. Pakai hanya untuk
