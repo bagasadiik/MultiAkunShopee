@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard Multi-Akun Shopee</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <span class="logo">🛍️</span>
+        <div>
+          <h1>Dashboard Multi-Akun Shopee</h1>
+          <p class="subtitle">Open API v2 · OAuth · kelola toko milik sendiri</p>
+        </div>
+      </div>
+      <a class="btn btn-primary" href="/auth/login">+ Hubungkan Toko</a>
+    </header>
+
+    <main class="container">
+      <div id="setup-banner" class="banner banner-warn" hidden></div>
+
+      <!-- Connected shops -->
+      <section class="card">
+        <div class="card-head">
+          <h2>Toko Terhubung</h2>
+          <button id="refresh-shops" class="btn btn-ghost" type="button">Muat ulang</button>
+        </div>
+        <div id="shops" class="shop-grid">
+          <p class="muted">Memuat…</p>
+        </div>
+      </section>
+
+      <!-- Orders -->
+      <section class="card">
+        <div class="card-head">
+          <h2>Pesanan</h2>
+          <div class="filters">
+            <label>
+              Toko
+              <select id="filter-shop">
+                <option value="">Semua toko</option>
+              </select>
+            </label>
+            <label>
+              Rentang
+              <select id="filter-days">
+                <option value="1">24 jam</option>
+                <option value="3">3 hari</option>
+                <option value="7" selected>7 hari</option>
+                <option value="15">15 hari (maks)</option>
+              </select>
+            </label>
+            <label>
+              Status
+              <select id="filter-status">
+                <option value="">Semua status</option>
+                <option value="UNPAID">Belum dibayar</option>
+                <option value="READY_TO_SHIP">Siap kirim</option>
+                <option value="PROCESSED">Diproses</option>
+                <option value="SHIPPED">Dikirim</option>
+                <option value="COMPLETED">Selesai</option>
+                <option value="IN_CANCEL">Proses batal</option>
+                <option value="CANCELLED">Dibatalkan</option>
+              </select>
+            </label>
+            <button id="load-orders" class="btn btn-primary" type="button">Tampilkan</button>
+            <button id="export-csv" class="btn btn-ghost" type="button">Ekspor CSV</button>
+          </div>
+        </div>
+
+        <div id="orders-summary" class="summary" hidden></div>
+        <div id="orders-errors" class="banner banner-error" hidden></div>
+
+        <div class="table-wrap">
+          <table id="orders-table">
+            <thead>
+              <tr>
+                <th>No. Pesanan</th>
+                <th>Toko</th>
+                <th>Status</th>
+                <th>Total</th>
+                <th>Pembeli</th>
+                <th>Produk</th>
+                <th>Dibuat</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="orders-body">
+              <tr><td colspan="8" class="muted">Belum ada data. Klik "Tampilkan".</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <!-- Order detail modal -->
+    <div id="modal-overlay" class="modal-overlay" hidden>
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <div class="modal-head">
+          <h3 id="modal-title">Detail Pesanan</h3>
+          <button id="modal-close" class="modal-close" type="button" aria-label="Tutup">&times;</button>
+        </div>
+        <div id="modal-body" class="modal-body">
+          <p class="muted">Memuat…</p>
+        </div>
+      </div>
+    </div>
+
+    <footer class="footer">
+      <p>
+        Hanya untuk mengelola toko/akun Shopee milik Anda sendiri melalui Shopee Open Platform.
+        Token disimpan lokal di server Anda.
+      </p>
+    </footer>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,27 @@
+{
+  "name": "multi-akun-shopee",
+  "version": "1.0.0",
+  "description": "Dashboard multi-akun resmi untuk mengelola beberapa toko Shopee milik sendiri via Shopee Open API v2 (OAuth).",
+  "license": "MIT",
+  "type": "commonjs",
+  "main": "dist/index.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.5.4",
+    "tsx": "^4.16.2",
+    "typescript": "^5.5.3"
+  }
+}
