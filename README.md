@@ -159,6 +159,75 @@ Buka <http://localhost:3000>.
 
 ---
 
+## 5. Deploy
+
+> **PENTING — Redirect URL.** Saat di-deploy, `SHOPEE_REDIRECT_URL` harus berupa
+> URL **publik** aplikasi (mis. `https://shopee.domainanda.com/auth/callback`) dan
+> **didaftarkan sama persis** di Shopee Open Platform. Shopee mewajibkan **HTTPS**
+> untuk redirect di produksi — taruh aplikasi di belakang reverse proxy (Nginx,
+> Caddy, Traefik) atau platform yang sudah menyediakan TLS.
+
+### Opsi A — Docker Compose (paling mudah)
+
+```bash
+cp .env.example .env       # isi kredensial + SHOPEE_REDIRECT_URL publik
+docker compose up -d --build
+docker compose logs -f     # lihat log
+```
+
+- Token disimpan di named volume `shopee-data` (`/app/data`) sehingga tetap ada
+  walau container di-_recreate_.
+- Hentikan: `docker compose down` (data tetap aman di volume).
+- Backup data: `docker run --rm -v shopee-data:/data -v "$PWD":/backup busybox \
+  tar czf /backup/shopee-data.tar.gz -C /data .`
+
+### Opsi B — Docker manual
+
+```bash
+docker build -t multi-akun-shopee .
+docker run -d --name shopee \
+  --env-file .env -e PORT=3000 \
+  -p 3000:3000 \
+  -v shopee-data:/app/data \
+  multi-akun-shopee
+```
+
+### Opsi C — Tanpa Docker (VPS / bare metal)
+
+```bash
+npm install
+npm run build
+NODE_ENV=production npm start
+```
+
+Untuk menjaga proses tetap hidup, gunakan process manager seperti **pm2**:
+
+```bash
+npm install -g pm2
+pm2 start dist/index.js --name shopee
+pm2 save && pm2 startup    # auto-start saat boot
+```
+
+Lalu pasang reverse proxy + TLS. Contoh blok **Nginx**:
+
+```nginx
+server {
+  server_name shopee.domainanda.com;
+  location / {
+    proxy_pass http://127.0.0.1:3000;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+  }
+  # TLS dikelola Certbot/Let's Encrypt
+}
+```
+
+> Catatan: image Docker memakai `node:22-slim` agar `STORE_DRIVER=sqlite`
+> (modul bawaan `node:sqlite`) berjalan andal. Untuk mode `file`, Node 18+ cukup.
+
+---
+
 ## Endpoint API (internal)
 
 | Method | Path | Keterangan |

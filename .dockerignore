@@ -1,0 +1,23 @@
+# Dependencies & build artifacts (rebuilt inside the image)
+node_modules
+dist
+
+# Secrets & persisted data (provide via env / volume instead)
+.env
+.env.local
+data
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+
+# VCS & misc
+.git
+.gitignore
+*.log
+npm-debug.log*
+.DS_Store
+.idea
+.vscode
+README.md

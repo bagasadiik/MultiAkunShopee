@@ -1,0 +1,20 @@
+services:
+  dashboard:
+    build: .
+    image: multi-akun-shopee
+    container_name: multi-akun-shopee
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      # PORT di dalam container selalu 3000 (lihat EXPOSE & port mapping di atas).
+      PORT: 3000
+    env_file:
+      # Kredensial & konfigurasi diambil dari file .env (lihat .env.example).
+      - .env
+    volumes:
+      # Persist token store (accounts.json / accounts.db) di named volume.
+      - shopee-data:/app/data
+
+volumes:
+  shopee-data:
