@@ -157,6 +157,16 @@ function populateShopFilter() {
 // ---------------------------------------------------------------------------
 // Orders
 // ---------------------------------------------------------------------------
+function currentFilters() {
+  const shopId = $('#filter-shop').value;
+  const days = $('#filter-days').value;
+  const status = $('#filter-status').value;
+  const params = new URLSearchParams();
+  if (days) params.set('days', days);
+  if (status) params.set('status', status);
+  return { shopId, params };
+}
+
 function orderRow(order) {
   const shopName = order.shopName || `Toko ${order.shopId}`;
   const status = order.order_status || '—';
@@ -172,6 +182,9 @@ function orderRow(order) {
     .join(', ');
   const moreItems = (order.item_list || []).length > 3 ? ` +${order.item_list.length - 3} lainnya` : '';
 
+  const detailBtn = el('button', { className: 'btn btn-ghost btn-sm', type: 'button' }, 'Detail');
+  detailBtn.addEventListener('click', () => openOrderDetail(order.shopId, order.order_sn));
+
   return el('tr', {}, [
     el('td', { className: 'order-sn' }, order.order_sn),
     el('td', {}, shopName),
@@ -180,6 +193,7 @@ function orderRow(order) {
     el('td', {}, order.buyer_username || '—'),
     el('td', {}, (items || '—') + moreItems),
     el('td', {}, fmtDateTime(order.create_time)),
+    el('td', {}, detailBtn),
   ]);
 }
 
@@ -189,20 +203,14 @@ async function loadOrders() {
   const errorsBox = $('#orders-errors');
   const btn = $('#load-orders');
 
-  const shopId = $('#filter-shop').value;
-  const days = $('#filter-days').value;
-  const status = $('#filter-status').value;
-
-  const params = new URLSearchParams();
-  if (days) params.set('days', days);
-  if (status) params.set('status', status);
+  const { shopId, params } = currentFilters();
 
   const path = shopId
     ? `/api/shops/${shopId}/orders?${params}`
     : `/api/orders?${params}`;
 
   btn.classList.add('loading');
-  body.innerHTML = '<tr><td colspan="7" class="muted">Memuat pesanan…</td></tr>';
+  body.innerHTML = '<tr><td colspan="8" class="muted">Memuat pesanan…</td></tr>';
   errorsBox.hidden = true;
   summary.hidden = true;
 
@@ -212,7 +220,7 @@ async function loadOrders() {
 
     body.innerHTML = '';
     if (orders.length === 0) {
-      body.innerHTML = '<tr><td colspan="7" class="muted">Tidak ada pesanan pada rentang ini.</td></tr>';
+      body.innerHTML = '<tr><td colspan="8" class="muted">Tidak ada pesanan pada rentang ini.</td></tr>';
     } else {
       orders.forEach((o) => body.append(orderRow(o)));
     }
@@ -237,9 +245,122 @@ async function loadOrders() {
           .join('<br>');
     }
   } catch (e) {
-    body.innerHTML = `<tr><td colspan="7" class="muted">Gagal memuat: ${e.message}</td></tr>`;
+    body.innerHTML = `<tr><td colspan="8" class="muted">Gagal memuat: ${e.message}</td></tr>`;
   } finally {
     btn.classList.remove('loading');
+  }
+}
+
+function exportCsv() {
+  const { shopId, params } = currentFilters();
+  const url = shopId
+    ? `/api/shops/${shopId}/orders/export.csv?${params}`
+    : `/api/orders/export.csv?${params}`;
+  // Trigger a browser download (endpoint sets Content-Disposition: attachment).
+  window.location.assign(url);
+}
+
+// ---------------------------------------------------------------------------
+// Order detail modal
+// ---------------------------------------------------------------------------
+function closeModal() {
+  $('#modal-overlay').hidden = true;
+}
+
+function kv(label, value) {
+  return el('div', { className: 'kv' }, [
+    el('span', { className: 'kv-label' }, label),
+    el('span', { className: 'kv-value' }, value == null || value === '' ? '—' : String(value)),
+  ]);
+}
+
+function renderTracking(tracking) {
+  const wrap = el('div', { className: 'tracking' });
+  wrap.append(el('h4', {}, 'Pengiriman / Resi'));
+  wrap.append(kv('No. Resi', tracking.trackingNumber || '—'));
+  wrap.append(kv('Status logistik', tracking.logisticsStatus || '—'));
+
+  const checkpoints = tracking.checkpoints || [];
+  if (checkpoints.length === 0) {
+    wrap.append(el('p', { className: 'muted' }, 'Belum ada riwayat pengiriman.'));
+    return wrap;
+  }
+  const timeline = el('ul', { className: 'timeline' });
+  checkpoints.forEach((c) => {
+    timeline.append(
+      el('li', {}, [
+        el('div', { className: 'timeline-time' }, fmtDateTime(c.update_time)),
+        el('div', { className: 'timeline-desc' }, c.description || c.logistics_status || '—'),
+      ]),
+    );
+  });
+  wrap.append(timeline);
+  return wrap;
+}
+
+function renderOrderDetail(order, tracking) {
+  const bodyEl = $('#modal-body');
+  bodyEl.innerHTML = '';
+  $('#modal-title').textContent = `Pesanan ${order.order_sn}`;
+
+  // Summary grid
+  const grid = el('div', { className: 'detail-grid' });
+  grid.append(
+    kv('Toko', order.shopName || `Toko ${order.shopId}`),
+    kv('Status', STATUS_LABEL[order.order_status] || order.order_status || '—'),
+    kv('Total', fmtMoney(order.total_amount, order.currency)),
+    kv('Pembeli', order.buyer_username),
+    kv('Metode bayar', order.payment_method),
+    kv('Kurir', order.shipping_carrier),
+    kv('COD', order.cod === undefined ? '—' : order.cod ? 'Ya' : 'Tidak'),
+    kv('Dibuat', fmtDateTime(order.create_time)),
+  );
+  bodyEl.append(grid);
+
+  if (order.message_to_seller) {
+    bodyEl.append(kv('Pesan pembeli', order.message_to_seller));
+  }
+
+  // Recipient
+  if (order.recipient_address) {
+    const r = order.recipient_address;
+    bodyEl.append(el('h4', {}, 'Penerima'));
+    bodyEl.append(kv('Nama', r.name));
+    bodyEl.append(kv('Kota/Wilayah', [r.city, r.state, r.region].filter(Boolean).join(', ')));
+  }
+
+  // Items
+  bodyEl.append(el('h4', {}, 'Produk'));
+  const items = order.item_list || [];
+  if (items.length === 0) {
+    bodyEl.append(el('p', { className: 'muted' }, 'Tidak ada item.'));
+  } else {
+    const list = el('ul', { className: 'item-list' });
+    items.forEach((it) => {
+      const qty = it.model_quantity_purchased ? ` ×${it.model_quantity_purchased}` : '';
+      const model = it.model_name ? ` — ${it.model_name}` : '';
+      const price = it.model_discounted_price != null
+        ? ` (${fmtMoney(it.model_discounted_price, order.currency)})`
+        : '';
+      list.append(el('li', {}, `${it.item_name || 'Item'}${model}${qty}${price}`));
+    });
+    bodyEl.append(list);
+  }
+
+  // Tracking
+  bodyEl.append(renderTracking(tracking || { checkpoints: [] }));
+}
+
+async function openOrderDetail(shopId, orderSn) {
+  const overlay = $('#modal-overlay');
+  overlay.hidden = false;
+  $('#modal-title').textContent = `Pesanan ${orderSn}`;
+  $('#modal-body').innerHTML = '<p class="muted">Memuat…</p>';
+  try {
+    const data = await api(`/api/shops/${shopId}/orders/${encodeURIComponent(orderSn)}`);
+    renderOrderDetail(data.order, data.tracking);
+  } catch (e) {
+    $('#modal-body').innerHTML = `<p class="muted">Gagal memuat detail: ${e.message}</p>`;
   }
 }
 
@@ -249,6 +370,16 @@ async function loadOrders() {
 function init() {
   $('#refresh-shops').addEventListener('click', loadShops);
   $('#load-orders').addEventListener('click', loadOrders);
+  $('#export-csv').addEventListener('click', exportCsv);
+
+  // Modal close: button, overlay click, and Escape key.
+  $('#modal-close').addEventListener('click', closeModal);
+  $('#modal-overlay').addEventListener('click', (e) => {
+    if (e.target === $('#modal-overlay')) closeModal();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeModal();
+  });
 
   // If we just came back from a successful OAuth connect, clean the URL.
   const url = new URL(window.location.href);

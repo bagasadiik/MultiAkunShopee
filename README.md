@@ -19,6 +19,10 @@ melihat pesanan dari seluruh toko dalam satu tampilan.
   memakai refresh token sebelum kedaluwarsa.
 - 📦 **Lihat pesanan** — daftar + detail pesanan (`get_order_list` +
   `get_order_detail`) dengan filter rentang waktu (maks 15 hari) dan status.
+- 🔎 **Detail pesanan** — modal berisi produk, penerima, metode bayar, dll.
+- 🚚 **Status pengiriman / resi** — nomor resi & timeline tracking
+  (`get_tracking_number` + `get_tracking_info`).
+- 📥 **Ekspor CSV** — unduh pesanan (per toko atau semua toko) sebagai CSV.
 - 📊 **Agregasi lintas toko** — gabungkan pesanan semua toko, diurutkan terbaru.
 - 🧱 **Aman by default** — token tidak pernah dikirim ke browser; folder `data/`
   di-_gitignore_.
@@ -36,9 +40,12 @@ src/
 │   ├── client.ts          # tanda tangan (HMAC-SHA256) + HTTP client
 │   ├── auth.ts            # buildAuthUrl, tukar code -> token, refresh
 │   ├── shop.ts            # get_shop_info (nama toko)
-│   └── orders.ts          # get_order_list + get_order_detail + agregasi
+│   ├── logistics.ts       # get_tracking_number + get_tracking_info (resi)
+│   └── orders.ts          # get_order_list + get_order_detail + agregasi + CSV
 ├── store/
 │   └── tokenStore.ts      # penyimpanan token multi-akun (file JSON)
+├── util/
+│   └── csv.ts             # pembuat dokumen CSV (RFC 4180 + BOM)
 └── routes/
     ├── auth.ts            # /auth/login, /auth/callback
     ├── shops.ts           # /api/shops ...
@@ -135,7 +142,10 @@ Buka <http://localhost:3000>.
 | POST | `/api/shops/:shopId/refresh` | Refresh token manual |
 | DELETE | `/api/shops/:shopId` | Putuskan toko (hapus token lokal) |
 | GET | `/api/shops/:shopId/orders` | Pesanan satu toko |
+| GET | `/api/shops/:shopId/orders/export.csv` | Unduh pesanan satu toko (CSV) |
+| GET | `/api/shops/:shopId/orders/:orderSn` | Detail satu pesanan + tracking/resi |
 | GET | `/api/orders` | Pesanan gabungan semua toko |
+| GET | `/api/orders/export.csv` | Unduh pesanan semua toko (CSV) |
 
 Query untuk endpoint pesanan: `days` (≤15), `status`
 (`UNPAID`, `READY_TO_SHIP`, `PROCESSED`, `SHIPPED`, `COMPLETED`, `IN_CANCEL`,

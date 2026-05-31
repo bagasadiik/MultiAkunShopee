@@ -2,10 +2,16 @@ import { Router } from 'express';
 import { listAccounts, getAccount, removeAccount } from '../store/tokenStore';
 import { isExpired, refreshAccessToken } from '../shopee/auth';
 import { getShopInfo } from '../shopee/shop';
-import { shopOrdersHandler } from './orders';
+import { shopOrdersHandler, shopOrdersCsvHandler, orderDetailHandler } from './orders';
 
 export const shopsRouter = Router();
 
+// NOTE: order matters — the literal "export.csv" route must be registered
+// before the "/:orderSn" param route so it isn't captured as an order number.
+/** GET /api/shops/:shopId/orders/export.csv — download this shop's orders as CSV. */
+shopsRouter.get('/:shopId/orders/export.csv', shopOrdersCsvHandler);
+/** GET /api/shops/:shopId/orders/:orderSn — single order detail + tracking. */
+shopsRouter.get('/:shopId/orders/:orderSn', orderDetailHandler);
 /** GET /api/shops/:shopId/orders — orders for a single shop. */
 shopsRouter.get('/:shopId/orders', shopOrdersHandler);
 

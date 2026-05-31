@@ -66,6 +66,7 @@
               </select>
             </label>
             <button id="load-orders" class="btn btn-primary" type="button">Tampilkan</button>
+            <button id="export-csv" class="btn btn-ghost" type="button">Ekspor CSV</button>
           </div>
         </div>
 
@@ -83,15 +84,29 @@
                 <th>Pembeli</th>
                 <th>Produk</th>
                 <th>Dibuat</th>
+                <th>Aksi</th>
               </tr>
             </thead>
             <tbody id="orders-body">
-              <tr><td colspan="7" class="muted">Belum ada data. Klik "Tampilkan".</td></tr>
+              <tr><td colspan="8" class="muted">Belum ada data. Klik "Tampilkan".</td></tr>
             </tbody>
           </table>
         </div>
       </section>
     </main>
+
+    <!-- Order detail modal -->
+    <div id="modal-overlay" class="modal-overlay" hidden>
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <div class="modal-head">
+          <h3 id="modal-title">Detail Pesanan</h3>
+          <button id="modal-close" class="modal-close" type="button" aria-label="Tutup">&times;</button>
+        </div>
+        <div id="modal-body" class="modal-body">
+          <p class="muted">Memuat…</p>
+        </div>
+      </div>
+    </div>
 
     <footer class="footer">
       <p>
